@@ -6,7 +6,7 @@
 /*   By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 20:17:16 by akovalev          #+#    #+#             */
-/*   Updated: 2024/05/06 21:04:34 by akovalev         ###   ########.fr       */
+/*   Updated: 2024/05/06 21:30:18 by akovalev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -221,7 +221,7 @@ int	input_validation(char **argv)
 bool	potential_perishment(t_philos *p)
 {
 	pthread_mutex_lock(p->alive_mutex);
-	if (!p->alive)
+	if (!p->alive || p->info->death)
 	{
 		pthread_mutex_unlock(p->alive_mutex);
 		return (1);
@@ -269,6 +269,7 @@ bool	equip_forks(t_philos *p)
 	if (potential_perishment(p))
 	{
 		pthread_mutex_unlock(p->info->forks[p->id]);
+		pthread_mutex_unlock(p->info->forks[p->right]);
 		return (NULL);
 	}
 	pthread_mutex_lock(p->info->print);
@@ -393,6 +394,7 @@ int	cradle_of_philosophy(t_info *info, t_philos **philos)
 		else
 			philos[i]->right = i + 1;
 		pthread_create(&philos[i]->thread, NULL, philosophize, (void *)philos[i]);
+		//printf("created thread %zu\n", i);
 		i++;
 	}
 	return (1);
