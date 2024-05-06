@@ -6,7 +6,7 @@
 /*   By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 20:15:20 by akovalev          #+#    #+#             */
-/*   Updated: 2024/05/06 15:06:26 by akovalev         ###   ########.fr       */
+/*   Updated: 2024/05/06 21:03:42 by akovalev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,6 +36,7 @@ typedef struct s_info
 	pthread_mutex_t	*print;
 	void			**philos;
 	size_t			init;
+	bool			death;
 }	t_info;
 
 typedef struct s_philos

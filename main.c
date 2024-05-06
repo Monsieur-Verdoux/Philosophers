@@ -6,7 +6,7 @@
 /*   By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 20:17:16 by akovalev          #+#    #+#             */
-/*   Updated: 2024/05/06 18:34:16 by akovalev         ###   ########.fr       */
+/*   Updated: 2024/05/06 21:04:34 by akovalev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -235,9 +235,14 @@ bool	potential_perishment(t_philos *p)
 			//printf("slm is %zu and ttd is %zu\n", p->since_last_meal, p->info->time_to_die);
 			pthread_mutex_unlock(p->eat_mutex);
 			p->alive = 0;
+			//p->info->death = 1;
 			pthread_mutex_unlock(p->alive_mutex);
 			pthread_mutex_lock(p->info->print);
-			printf("[%zu] %d died 😵: I see you know your Judo well!\n", get_current_time() - p->init, p->id);
+			if (!p->info->death)
+			{
+				printf("[%zu] %d died 😵: I see you know your Judo well!\n", get_current_time() - p->init, p->id);
+				p->info->death = 1;
+			}
 			pthread_mutex_unlock(p->info->print);
 			return (1);
 		}
@@ -350,6 +355,7 @@ void	initialize(char **argv, int argc, t_info *info)
 		return ;
 	pthread_mutex_init(info->print, NULL);
 	info->init = get_current_time();
+	info->death = 0;
 	//printf("current time is %zu\n", info->init);
 }
 	
@@ -475,8 +481,8 @@ int	main(int argc, char **argv)
 	}
 	if (input_validation(argv))
 		return (EXIT_FAILURE);
-	else
-		ft_putstr_fd("Arguments validated\n", 1);
+	// else
+	// 	ft_putstr_fd("Arguments validated\n", 1);
 	initialize(argv, argc, &info);
 	//ft_putstr_fd("Init successful\n", 1);
 	philos = ft_calloc(info.number_of_philosophers + 1, sizeof(t_philos *));
