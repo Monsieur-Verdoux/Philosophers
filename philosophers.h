@@ -6,7 +6,7 @@
 /*   By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 20:15:20 by akovalev          #+#    #+#             */
-/*   Updated: 2024/05/03 17:28:14 by akovalev         ###   ########.fr       */
+/*   Updated: 2024/05/06 15:06:26 by akovalev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,11 @@
 # include <limits.h>
 # include <sys/time.h>
 # include <stdbool.h>
+# define DEAD	0
+# define ALIVE	1
+# define EAT	1
+# define SLEEP	2
+# define THINK	3
 
 typedef struct s_info
 {
@@ -28,14 +33,26 @@ typedef struct s_info
 	size_t			time_to_sleep;
 	size_t			number_of_times_each_philosopher_must_eat;
 	pthread_mutex_t	**forks;
+	pthread_mutex_t	*print;
 	void			**philos;
+	size_t			init;
 }	t_info;
 
 typedef struct s_philos
 {
-	size_t		id;
-	pthread_t	thread;
-	t_info		*info;
+	int			id;
+	pthread_t		thread;
+	int				status;
+	t_info			*info;
+	int				left;
+	int				right;
+	bool			alive;
+	size_t			meal_count;
+	size_t			last_meal;
+	size_t			since_last_meal;
+	pthread_mutex_t	*alive_mutex;
+	pthread_mutex_t	*eat_mutex;
+	size_t			init;
 }	t_philos;
 
 #endif 

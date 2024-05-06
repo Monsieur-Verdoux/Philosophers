@@ -6,13 +6,55 @@
 /*   By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 20:17:16 by akovalev          #+#    #+#             */
-/*   Updated: 2024/05/03 18:25:53 by akovalev         ###   ########.fr       */
+/*   Updated: 2024/05/06 18:34:16 by akovalev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "philosophers.h"
 
 #include <stdio.h>
+
+void	demutexize(t_info *info)
+{
+	int	i;
+
+	pthread_mutex_destroy(info->print);
+	free(info->print);
+	info->print = NULL;
+	i = 0;
+	while (info->forks[i])
+	{
+		pthread_mutex_destroy(info->forks[i]);
+		free(info->forks[i]);
+		//printf("Deforkage %zu successful\n", i);
+		info->forks[i] = NULL;
+		i++;
+	}
+	free(info->forks);
+	info->forks = NULL;
+}
+
+void	dephilosize(t_philos **philos)
+{
+	int	i;
+
+	i = 0;
+	while (philos[i])
+	{
+		pthread_mutex_destroy(philos[i]->alive_mutex);
+		pthread_mutex_destroy(philos[i]->eat_mutex);
+		free(philos[i]->alive_mutex);
+		philos[i]->alive_mutex = NULL;
+		free(philos[i]->eat_mutex);
+		philos[i]->eat_mutex = NULL;
+		free(philos[i]);
+		philos[i] = NULL;
+		//printf("Dephilo %zu successful\n", i);
+		i++;
+	}
+	free(philos);
+	philos = NULL;
+}
 
 void	ft_putchar_fd(char c, int fd)
 {
@@ -175,12 +217,121 @@ int	input_validation(char **argv)
 	}
 	return (0);
 }
+
+bool	potential_perishment(t_philos *p)
+{
+	pthread_mutex_lock(p->alive_mutex);
+	if (!p->alive)
+	{
+		pthread_mutex_unlock(p->alive_mutex);
+		return (1);
+	}
+	else
+	{
+		pthread_mutex_lock(p->eat_mutex);
+		p->since_last_meal = get_current_time() - p->last_meal;
+		if (p->since_last_meal > p->info->time_to_die)
+		{
+			//printf("slm is %zu and ttd is %zu\n", p->since_last_meal, p->info->time_to_die);
+			pthread_mutex_unlock(p->eat_mutex);
+			p->alive = 0;
+			pthread_mutex_unlock(p->alive_mutex);
+			pthread_mutex_lock(p->info->print);
+			printf("[%zu] %d died 😵: I see you know your Judo well!\n", get_current_time() - p->init, p->id);
+			pthread_mutex_unlock(p->info->print);
+			return (1);
+		}
+		pthread_mutex_unlock(p->eat_mutex);
+		pthread_mutex_unlock(p->alive_mutex);
+	}
+	return (0);
+}
+
+bool	equip_forks(t_philos *p)
+{
+	//printf("current philo is %d and his right fork is %d\n", p->id, p->right);
+	pthread_mutex_lock(p->info->forks[p->right]);
+	if (potential_perishment(p))
+	{
+		pthread_mutex_unlock(p->info->forks[p->right]);
+		return (NULL);
+	}
+	pthread_mutex_lock(p->info->print);
+	printf("[%zu] %d has taken a fork %d 🥄:\n",
+		get_current_time() - p->init, p->id, p->right);
+	pthread_mutex_unlock(p->info->print);
+	pthread_mutex_lock(p->info->forks[p->id]);
+	if (potential_perishment(p))
+	{
+		pthread_mutex_unlock(p->info->forks[p->id]);
+		return (NULL);
+	}
+	pthread_mutex_lock(p->info->print);
+	printf("[%zu] %d has taken a fork %d 🥄:\n",
+		get_current_time() - p->init, p->id, p->id);
+	pthread_mutex_unlock(p->info->print);
+	return (p);
+}
+
+void	thinkage(t_philos *p)
+{
+	pthread_mutex_lock(p->info->print);
+	printf("[%zu] %d is thinking 🤔: Gentlemen! This.. is.. Democracy.. Manifest..\n",
+		get_current_time() - p->init, p->id);
+	pthread_mutex_unlock(p->info->print);
+	//p->status = THINK;
+}
+
+
+
+void	feedage(t_philos *p)
+{
+	pthread_mutex_lock(p->eat_mutex);
+	p->last_meal = get_current_time();
+	//printf("Philo %d ate at %zu\n", p->id, p->last_meal);
+	p->meal_count++;
+	pthread_mutex_unlock(p->eat_mutex);
+	pthread_mutex_lock(p->info->print);
+	printf("[%zu] %d is eating 🍽️: A succulent Chinese meal!\n", get_current_time() - p->init, p->id);
+	pthread_mutex_unlock(p->info->print);
+	ft_newsleep(p->info->time_to_eat);
+	pthread_mutex_unlock(p->info->forks[p->right]);
+	pthread_mutex_unlock(p->info->forks[p->id]);
+}
+
+void	sleepage(t_philos *p)
+{
+	pthread_mutex_lock(p->info->print);
+	printf("[%zu] %d is sleeping 😴: Ta ta and farewell!\n", get_current_time() - p->init, p->id);
+	pthread_mutex_unlock(p->info->print);
+	//p->status = SLEEP;
+	ft_newsleep(p->info->time_to_sleep);
+}
+
 void	*philosophize(void *ptr)
 {
-	t_philos	*philos;
+	t_philos	*philo;
 
-	philos = (t_philos *)ptr;
-	printf("Gentlemen! This.. is.. Democracy.. Manifest.. from seat %zu\n", philos->id);
+	philo = (t_philos *)ptr;
+	if (philo->id % 2 == 0)
+		ft_newsleep(2);
+	if (philo->info->number_of_philosophers == 1)
+	{
+		//lonely_death(philo);
+		return (NULL);
+	}
+	while (!potential_perishment(philo))//(philo->alive) //why can't I use just philo->alive?
+	{
+		if (!equip_forks(philo))
+			return (NULL);
+		feedage(philo);
+		if (potential_perishment(philo))
+		 	return (NULL);
+		sleepage(philo);
+		if (potential_perishment(philo))
+		 	return (NULL);
+		thinkage(philo);
+	}
 	return (NULL);
 }
 
@@ -194,7 +345,14 @@ void	initialize(char **argv, int argc, t_info *info)
 		info->number_of_times_each_philosopher_must_eat = ft_atoi(argv[5]);
 	else
 		info->number_of_times_each_philosopher_must_eat = 0; //maybe need to handle 0 being passed as argument separately from not having it at all
+	info->print = ft_calloc(1, sizeof(pthread_mutex_t));
+	if (!malloc_fail(info->print))
+		return ;
+	pthread_mutex_init(info->print, NULL);
+	info->init = get_current_time();
+	//printf("current time is %zu\n", info->init);
 }
+	
 int	cradle_of_philosophy(t_info *info, t_philos **philos)
 {
 	size_t	i;
@@ -202,6 +360,7 @@ int	cradle_of_philosophy(t_info *info, t_philos **philos)
 	i = 0;
 	while (i < info->number_of_philosophers)
 	{
+		//printf("i is %zu and philo num is %zu\n", i, info->number_of_philosophers);
 		philos[i] = ft_calloc(1, sizeof(t_philos));
 		if (!philos[i])
 		{
@@ -210,6 +369,23 @@ int	cradle_of_philosophy(t_info *info, t_philos **philos)
 		}
 		philos[i]->id = i;
 		philos[i]->info = info;
+		philos[i]->init = info->init;
+		philos[i]->meal_count = 0;
+		philos[i]->alive = 1;
+		philos[i]->last_meal = philos[i]->init;
+		philos[i]->since_last_meal = 0;
+		philos[i]->alive_mutex = ft_calloc(1, sizeof(pthread_mutex_t));
+		if (!malloc_fail(philos[i]->alive_mutex))
+			return (0);
+		philos[i]->eat_mutex = ft_calloc(1, sizeof(pthread_mutex_t));
+		if (!malloc_fail(philos[i]->eat_mutex))
+			return (0);
+		pthread_mutex_init(philos[i]->alive_mutex, NULL);
+		pthread_mutex_init(philos[i]->eat_mutex, NULL);
+		if (i == info->number_of_philosophers - 1)
+			philos[i]->right = 0;
+		else
+			philos[i]->right = i + 1;
 		pthread_create(&philos[i]->thread, NULL, philosophize, (void *)philos[i]);
 		i++;
 	}
@@ -224,11 +400,12 @@ int	forkage(t_info *info)
 	i = 0;
 	while (i < info->number_of_philosophers)
 	{
+		//printf("i is %zu and philo num is %zu\n", i, info->number_of_philosophers);
 		info->forks[i] = ft_calloc(1, sizeof(pthread_mutex_t));
 		if (!malloc_fail(info->forks[i]))
 			return (0);
 		pthread_mutex_init(info->forks[i], NULL);
-		printf("Forkage %zu successful\n", i);
+		//printf("Forkage %zu successful\n", i);
 		i++;
 	}
 	return (1);
@@ -250,6 +427,41 @@ void	deforkage(t_info *info)
 	info->forks = NULL;
 }
 
+void	forced_perishment(t_philos **philos)
+{
+	int	i;
+
+	i = 0;
+	while (philos[i])
+	{
+		pthread_mutex_lock(philos[i]->alive_mutex);
+		philos[i]->alive = 0;
+		pthread_mutex_unlock(philos[i]->alive_mutex);
+		i++;
+	}
+}
+
+void	overseer(t_philos **philos)
+{
+	int	perishment;
+	int	i;
+
+	perishment = 0;
+	i = 0;
+
+	while (!perishment)
+	{
+		while (philos[i])
+		{
+			if (potential_perishment(philos[i]))
+				perishment = 1;
+			i++;
+		}
+		i = 0;
+	}
+	forced_perishment(philos);
+}
+
 int	main(int argc, char **argv)
 {
 	t_info		info;
@@ -266,18 +478,26 @@ int	main(int argc, char **argv)
 	else
 		ft_putstr_fd("Arguments validated\n", 1);
 	initialize(argv, argc, &info);
+	//ft_putstr_fd("Init successful\n", 1);
 	philos = ft_calloc(info.number_of_philosophers + 1, sizeof(t_philos *));
 	if (!malloc_fail(philos))
 		return (0);
+	//ft_putstr_fd("Before cradle\n", 1);
+	forkage(&info);
 	if (!cradle_of_philosophy(&info, philos))
 		return (0);
-	forkage(&info);
+	//ft_putstr_fd("Before forkage\n", 1);
+	
+	//ft_putstr_fd("Forkage successful\n", 1);
+	overseer(philos);
 	i = 0;
 	while (philos[i])
 	{
 		pthread_join(philos[i]->thread, NULL);
 		i++;
 	}
-	deforkage(&info);
+	dephilosize(philos);
+	demutexize(&info);
+	//deforkage(&info);
 	return (EXIT_SUCCESS);
 }
