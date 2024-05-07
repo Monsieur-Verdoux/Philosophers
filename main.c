@@ -6,7 +6,7 @@
 /*   By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 20:17:16 by akovalev          #+#    #+#             */
-/*   Updated: 2024/05/06 21:30:18 by akovalev         ###   ########.fr       */
+/*   Updated: 2024/05/07 13:53:40 by akovalev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,9 @@ void	demutexize(t_info *info)
 	pthread_mutex_destroy(info->print);
 	free(info->print);
 	info->print = NULL;
+	pthread_mutex_destroy(info->death_mutex);
+	free(info->death_mutex);
+	info->death_mutex = NULL;
 	i = 0;
 	while (info->forks[i])
 	{
@@ -117,7 +120,6 @@ void	free_all(char **arr)
 	}
 	free(arr);
 }
-
 
 void	*ft_calloc(size_t count, size_t size)
 {
@@ -218,10 +220,23 @@ int	input_validation(char **argv)
 	return (0);
 }
 
+bool	check_death(t_philos *p)
+{
+	pthread_mutex_lock(p->info->death_mutex);
+	if (!p->info->death)
+	{
+		p->info->death = 1;
+		pthread_mutex_unlock(p->info->death_mutex);
+		return (1);
+	}
+	pthread_mutex_unlock(p->info->death_mutex);
+	return (0);
+}
+
 bool	potential_perishment(t_philos *p)
 {
 	pthread_mutex_lock(p->alive_mutex);
-	if (!p->alive || p->info->death)
+	if (!p->alive)
 	{
 		pthread_mutex_unlock(p->alive_mutex);
 		return (1);
@@ -235,20 +250,23 @@ bool	potential_perishment(t_philos *p)
 			//printf("slm is %zu and ttd is %zu\n", p->since_last_meal, p->info->time_to_die);
 			pthread_mutex_unlock(p->eat_mutex);
 			p->alive = 0;
-			//p->info->death = 1;
 			pthread_mutex_unlock(p->alive_mutex);
 			pthread_mutex_lock(p->info->print);
-			if (!p->info->death)
+			//pthread_mutex_lock(p->info->death_mutex);
+			if (check_death(p)) // this is causing racing issues
 			{
 				printf("[%zu] %d died 😵: I see you know your Judo well!\n", get_current_time() - p->init, p->id);
-				p->info->death = 1;
+				// pthread_mutex_lock(p->info->death_mutex);
+				// p->info->death = 1;
+				// pthread_mutex_unlock(p->info->death_mutex);
 			}
+			//pthread_mutex_unlock(p->info->death_mutex);
 			pthread_mutex_unlock(p->info->print);
 			return (1);
 		}
 		pthread_mutex_unlock(p->eat_mutex);
 		pthread_mutex_unlock(p->alive_mutex);
-	}
+	 }
 	return (0);
 }
 
@@ -355,11 +373,15 @@ void	initialize(char **argv, int argc, t_info *info)
 	if (!malloc_fail(info->print))
 		return ;
 	pthread_mutex_init(info->print, NULL);
+	info->death_mutex = ft_calloc(1, sizeof(pthread_mutex_t));
+	if (!malloc_fail(info->death_mutex))
+		return ;
+	pthread_mutex_init(info->death_mutex, NULL);
 	info->init = get_current_time();
 	info->death = 0;
 	//printf("current time is %zu\n", info->init);
 }
-	
+
 int	cradle_of_philosophy(t_info *info, t_philos **philos)
 {
 	size_t	i;
@@ -405,6 +427,8 @@ int	forkage(t_info *info)
 	size_t	i;
 
 	info->forks = ft_calloc(info->number_of_philosophers + 1, sizeof(pthread_mutex_t *));
+	if (!malloc_fail(info->forks))
+		return (0);
 	i = 0;
 	while (i < info->number_of_philosophers)
 	{
@@ -456,7 +480,6 @@ void	overseer(t_philos **philos)
 
 	perishment = 0;
 	i = 0;
-
 	while (!perishment)
 	{
 		while (philos[i])
@@ -495,7 +518,6 @@ int	main(int argc, char **argv)
 	if (!cradle_of_philosophy(&info, philos))
 		return (0);
 	//ft_putstr_fd("Before forkage\n", 1);
-	
 	//ft_putstr_fd("Forkage successful\n", 1);
 	overseer(philos);
 	i = 0;
