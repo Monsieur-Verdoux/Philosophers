@@ -6,7 +6,7 @@
 /*   By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 20:17:16 by akovalev          #+#    #+#             */
-/*   Updated: 2024/05/07 14:45:36 by akovalev         ###   ########.fr       */
+/*   Updated: 2024/05/07 15:54:54 by akovalev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -280,6 +280,15 @@ bool	equip_forks(t_philos *p)
 		return (NULL);
 	}
 	pthread_mutex_lock(p->info->print);
+	pthread_mutex_lock(p->info->death_mutex);
+	if (p->info->death)
+	{
+		pthread_mutex_unlock(p->info->forks[p->right]);
+		pthread_mutex_unlock(p->info->death_mutex);
+		pthread_mutex_unlock(p->info->print);
+		return (NULL);
+	}
+	pthread_mutex_unlock(p->info->death_mutex);
 	printf("[%zu] %d has taken a fork %d 🥄:\n",
 		get_current_time() - p->init, p->id, p->right);
 	pthread_mutex_unlock(p->info->print);
@@ -291,6 +300,16 @@ bool	equip_forks(t_philos *p)
 		return (NULL);
 	}
 	pthread_mutex_lock(p->info->print);
+	pthread_mutex_lock(p->info->death_mutex);
+	if (p->info->death)
+	{
+		pthread_mutex_unlock(p->info->forks[p->right]);
+		pthread_mutex_unlock(p->info->forks[p->id]);
+		pthread_mutex_unlock(p->info->death_mutex);
+		pthread_mutex_unlock(p->info->print);
+		return (NULL);
+	}
+	pthread_mutex_unlock(p->info->death_mutex);
 	printf("[%zu] %d has taken a fork %d 🥄:\n",
 		get_current_time() - p->init, p->id, p->id);
 	pthread_mutex_unlock(p->info->print);
@@ -300,8 +319,11 @@ bool	equip_forks(t_philos *p)
 void	thinkage(t_philos *p)
 {
 	pthread_mutex_lock(p->info->print);
-	printf("[%zu] %d is thinking 🤔: Gentlemen! This.. is.. Democracy.. Manifest..\n",
-		get_current_time() - p->init, p->id);
+	pthread_mutex_lock(p->info->death_mutex);
+	if (!p->info->death)
+		printf("[%zu] %d is thinking 🤔: Gentlemen! This.. is.. Democracy.. Manifest..\n",
+			get_current_time() - p->init, p->id);
+	pthread_mutex_unlock(p->info->death_mutex);
 	pthread_mutex_unlock(p->info->print);
 	//p->status = THINK;
 }
@@ -316,7 +338,10 @@ void	feedage(t_philos *p)
 	p->meal_count++;
 	pthread_mutex_unlock(p->eat_mutex);
 	pthread_mutex_lock(p->info->print);
-	printf("[%zu] %d is eating 🍽️: A succulent Chinese meal!\n", get_current_time() - p->init, p->id);
+	pthread_mutex_lock(p->info->death_mutex);
+	if (!p->info->death)
+		printf("[%zu] %d is eating 🍽️: A succulent Chinese meal!\n", get_current_time() - p->init, p->id);
+	pthread_mutex_unlock(p->info->death_mutex);
 	pthread_mutex_unlock(p->info->print);
 	ft_newsleep(p->info->time_to_eat);
 	pthread_mutex_unlock(p->info->forks[p->right]);
@@ -326,7 +351,10 @@ void	feedage(t_philos *p)
 void	sleepage(t_philos *p)
 {
 	pthread_mutex_lock(p->info->print);
-	printf("[%zu] %d is sleeping 😴: Ta ta and farewell!\n", get_current_time() - p->init, p->id);
+	pthread_mutex_lock(p->info->death_mutex);
+	if (!p->info->death)
+		printf("[%zu] %d is sleeping 😴: Ta ta and farewell!\n", get_current_time() - p->init, p->id);
+	pthread_mutex_unlock(p->info->death_mutex);
 	pthread_mutex_unlock(p->info->print);
 	//p->status = SLEEP;
 	ft_newsleep(p->info->time_to_sleep);
@@ -557,6 +585,7 @@ int	main(int argc, char **argv)
 		pthread_join(philos[i]->thread, NULL);
 		i++;
 	}
+	
 	dephilosize(philos);
 	demutexize(&info);
 	//deforkage(&info);
