@@ -6,7 +6,7 @@
 /*   By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 20:17:16 by akovalev          #+#    #+#             */
-/*   Updated: 2024/05/07 13:53:40 by akovalev         ###   ########.fr       */
+/*   Updated: 2024/05/07 14:45:36 by akovalev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -253,7 +253,7 @@ bool	potential_perishment(t_philos *p)
 			pthread_mutex_unlock(p->alive_mutex);
 			pthread_mutex_lock(p->info->print);
 			//pthread_mutex_lock(p->info->death_mutex);
-			if (check_death(p)) // this is causing racing issues
+			if (check_death(p)) // this was causing racing issues when just checking p->info>death
 			{
 				printf("[%zu] %d died 😵: I see you know your Judo well!\n", get_current_time() - p->init, p->id);
 				// pthread_mutex_lock(p->info->death_mutex);
@@ -473,19 +473,50 @@ void	forced_perishment(t_philos **philos)
 	}
 }
 
+bool	successful_gluttony(t_philos **philos)
+{
+	int	i;
+
+	i = 0;
+	pthread_mutex_lock(philos[i]->eat_mutex);
+	if (!philos[i]->info->number_of_times_each_philosopher_must_eat)
+	{
+		pthread_mutex_unlock(philos[i]->eat_mutex);
+		return (0);
+	}
+	pthread_mutex_unlock(philos[i]->eat_mutex);
+	while (philos[i])
+	{
+		pthread_mutex_lock(philos[i]->eat_mutex);
+		if (philos[i]->meal_count != philos[i]->info->number_of_times_each_philosopher_must_eat)
+		{
+			pthread_mutex_unlock(philos[i]->eat_mutex);
+			break ;
+		}
+		pthread_mutex_unlock(philos[i]->eat_mutex);
+		i++;
+		return (1);
+	}
+	return (0);
+}
+
 void	overseer(t_philos **philos)
 {
 	int	perishment;
 	int	i;
+	int	gluttony;
 
+	gluttony = 0;
 	perishment = 0;
 	i = 0;
-	while (!perishment)
+	while (!perishment && !gluttony)
 	{
 		while (philos[i])
 		{
 			if (potential_perishment(philos[i]))
 				perishment = 1;
+			if (successful_gluttony(philos))
+				gluttony = 1;
 			i++;
 		}
 		i = 0;
