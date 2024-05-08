@@ -6,11 +6,11 @@
 #    By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/05/02 20:17:28 by akovalev          #+#    #+#              #
-#    Updated: 2024/05/06 15:23:08 by akovalev         ###   ########.fr        #
+#    Updated: 2024/05/07 16:17:07 by akovalev         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
-NAME	:= philosophers
+NAME	:= philo
 
 CFLAGS	:= -pthread -fsanitize=thread #-Wextra -Wall -Werror -Wunreachable-code -Ofast 
 LDFLAGS := -pthread -fsanitize=thread

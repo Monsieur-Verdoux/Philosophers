@@ -6,7 +6,7 @@
 /*   By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 20:17:16 by akovalev          #+#    #+#             */
-/*   Updated: 2024/05/07 15:54:54 by akovalev         ###   ########.fr       */
+/*   Updated: 2024/05/08 15:58:23 by akovalev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,9 +21,9 @@ void	demutexize(t_info *info)
 	pthread_mutex_destroy(info->print);
 	free(info->print);
 	info->print = NULL;
-	pthread_mutex_destroy(info->death_mutex);
-	free(info->death_mutex);
-	info->death_mutex = NULL;
+	//pthread_mutex_destroy(info->death_mutex);
+	//free(info->death_mutex);
+	//info->death_mutex = NULL;
 	i = 0;
 	while (info->forks[i])
 	{
@@ -252,7 +252,7 @@ bool	potential_perishment(t_philos *p)
 			p->alive = 0;
 			pthread_mutex_unlock(p->alive_mutex);
 			pthread_mutex_lock(p->info->print);
-			//pthread_mutex_lock(p->info->death_mutex);
+			///pthread_mutex_lock(p->info->death_mutex);
 			if (check_death(p)) // this was causing racing issues when just checking p->info>death
 			{
 				printf("[%zu] %d died 😵: I see you know your Judo well!\n", get_current_time() - p->init, p->id);
@@ -300,9 +300,9 @@ bool	equip_forks(t_philos *p)
 		return (NULL);
 	}
 	pthread_mutex_lock(p->info->print);
-	pthread_mutex_lock(p->info->death_mutex);
-	if (p->info->death)
-	{
+	 pthread_mutex_lock(p->info->death_mutex);
+	 if (p->info->death)
+	 {
 		pthread_mutex_unlock(p->info->forks[p->right]);
 		pthread_mutex_unlock(p->info->forks[p->id]);
 		pthread_mutex_unlock(p->info->death_mutex);
@@ -325,7 +325,6 @@ void	thinkage(t_philos *p)
 			get_current_time() - p->init, p->id);
 	pthread_mutex_unlock(p->info->death_mutex);
 	pthread_mutex_unlock(p->info->print);
-	//p->status = THINK;
 }
 
 
@@ -356,7 +355,6 @@ void	sleepage(t_philos *p)
 		printf("[%zu] %d is sleeping 😴: Ta ta and farewell!\n", get_current_time() - p->init, p->id);
 	pthread_mutex_unlock(p->info->death_mutex);
 	pthread_mutex_unlock(p->info->print);
-	//p->status = SLEEP;
 	ft_newsleep(p->info->time_to_sleep);
 }
 
@@ -365,8 +363,17 @@ void	*philosophize(void *ptr)
 	t_philos	*philo;
 
 	philo = (t_philos *)ptr;
+	pthread_mutex_lock(philo->info->start_mutex);
+	philo->init = philo->info->init;
+	pthread_mutex_lock(philo->eat_mutex);
+	philo->last_meal = philo->init;
+	pthread_mutex_unlock(philo->eat_mutex);
+	pthread_mutex_unlock(philo->info->start_mutex);
 	if (philo->id % 2 == 0)
-		ft_newsleep(2);
+	{
+		thinkage(philo);
+		ft_newsleep(10);
+	}
 	if (philo->info->number_of_philosophers == 1)
 	{
 		//lonely_death(philo);
@@ -405,7 +412,11 @@ void	initialize(char **argv, int argc, t_info *info)
 	if (!malloc_fail(info->death_mutex))
 		return ;
 	pthread_mutex_init(info->death_mutex, NULL);
-	info->init = get_current_time();
+	info->start_mutex = ft_calloc(1, sizeof(pthread_mutex_t));
+	if (!malloc_fail(info->start_mutex))
+		return ;
+	pthread_mutex_init(info->start_mutex, NULL);
+	//info->init = get_current_time();
 	info->death = 0;
 	//printf("current time is %zu\n", info->init);
 }
@@ -419,19 +430,20 @@ int	cradle_of_philosophy(t_info *info, t_philos **philos)
 	{
 		//printf("i is %zu and philo num is %zu\n", i, info->number_of_philosophers);
 		philos[i] = ft_calloc(1, sizeof(t_philos));
-		if (!philos[i])
-		{
-			free_all((void *)philos);
+		if (!malloc_fail(philos[i]))
 			return (0);
-		}
 		philos[i]->id = i;
 		philos[i]->info = info;
-		philos[i]->init = info->init;
+		//philos[i]->init = info->init;
 		philos[i]->meal_count = 0;
 		philos[i]->alive = 1;
-		philos[i]->last_meal = philos[i]->init;
+		//philos[i]->last_meal = philos[i]->init;
 		philos[i]->since_last_meal = 0;
 		philos[i]->alive_mutex = ft_calloc(1, sizeof(pthread_mutex_t));
+		if (i == info->number_of_philosophers - 1)
+			philos[i]->right = 0;
+		else
+			philos[i]->right = i + 1;
 		if (!malloc_fail(philos[i]->alive_mutex))
 			return (0);
 		philos[i]->eat_mutex = ft_calloc(1, sizeof(pthread_mutex_t));
@@ -439,10 +451,6 @@ int	cradle_of_philosophy(t_info *info, t_philos **philos)
 			return (0);
 		pthread_mutex_init(philos[i]->alive_mutex, NULL);
 		pthread_mutex_init(philos[i]->eat_mutex, NULL);
-		if (i == info->number_of_philosophers - 1)
-			philos[i]->right = 0;
-		else
-			philos[i]->right = i + 1;
 		pthread_create(&philos[i]->thread, NULL, philosophize, (void *)philos[i]);
 		//printf("created thread %zu\n", i);
 		i++;
@@ -516,7 +524,7 @@ bool	successful_gluttony(t_philos **philos)
 	while (philos[i])
 	{
 		pthread_mutex_lock(philos[i]->eat_mutex);
-		if (philos[i]->meal_count != philos[i]->info->number_of_times_each_philosopher_must_eat)
+		if (philos[i]->meal_count < philos[i]->info->number_of_times_each_philosopher_must_eat)
 		{
 			pthread_mutex_unlock(philos[i]->eat_mutex);
 			break ;
@@ -537,6 +545,7 @@ void	overseer(t_philos **philos)
 	gluttony = 0;
 	perishment = 0;
 	i = 0;
+	ft_newsleep(15);
 	while (!perishment && !gluttony)
 	{
 		while (philos[i])
@@ -565,19 +574,16 @@ int	main(int argc, char **argv)
 	}
 	if (input_validation(argv))
 		return (EXIT_FAILURE);
-	// else
-	// 	ft_putstr_fd("Arguments validated\n", 1);
 	initialize(argv, argc, &info);
-	//ft_putstr_fd("Init successful\n", 1);
 	philos = ft_calloc(info.number_of_philosophers + 1, sizeof(t_philos *));
 	if (!malloc_fail(philos))
 		return (0);
-	//ft_putstr_fd("Before cradle\n", 1);
 	forkage(&info);
+	pthread_mutex_lock(info.start_mutex);
 	if (!cradle_of_philosophy(&info, philos))
 		return (0);
-	//ft_putstr_fd("Before forkage\n", 1);
-	//ft_putstr_fd("Forkage successful\n", 1);
+	info.init = get_current_time();
+	pthread_mutex_unlock(info.start_mutex);
 	overseer(philos);
 	i = 0;
 	while (philos[i])
@@ -585,7 +591,6 @@ int	main(int argc, char **argv)
 		pthread_join(philos[i]->thread, NULL);
 		i++;
 	}
-	
 	dephilosize(philos);
 	demutexize(&info);
 	//deforkage(&info);

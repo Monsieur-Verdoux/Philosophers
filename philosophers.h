@@ -6,7 +6,7 @@
 /*   By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 20:15:20 by akovalev          #+#    #+#             */
-/*   Updated: 2024/05/06 21:34:11 by akovalev         ###   ########.fr       */
+/*   Updated: 2024/05/08 14:01:37 by akovalev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,11 +19,6 @@
 # include <limits.h>
 # include <sys/time.h>
 # include <stdbool.h>
-# define DEAD	0
-# define ALIVE	1
-# define EAT	1
-# define SLEEP	2
-# define THINK	3
 
 typedef struct s_info
 {
@@ -38,6 +33,7 @@ typedef struct s_info
 	size_t			init;
 	bool			death;
 	pthread_mutex_t	*death_mutex;
+	pthread_mutex_t	*start_mutex;
 }	t_info;
 
 typedef struct s_philos
