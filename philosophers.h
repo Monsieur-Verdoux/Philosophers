@@ -6,7 +6,7 @@
 /*   By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 20:15:20 by akovalev          #+#    #+#             */
-/*   Updated: 2024/05/08 14:01:37 by akovalev         ###   ########.fr       */
+/*   Updated: 2024/05/08 17:30:34 by akovalev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,9 +48,13 @@ typedef struct s_philos
 	size_t			meal_count;
 	size_t			last_meal;
 	size_t			since_last_meal;
-	pthread_mutex_t	*alive_mutex;
 	pthread_mutex_t	*eat_mutex;
 	size_t			init;
+	size_t			number_of_philosophers;
+	size_t			number_of_times_each_philosopher_must_eat;
+	size_t			time_to_die;
+	size_t			time_to_eat;
+	size_t			time_to_sleep;
 }	t_philos;
 
 #endif 
