@@ -6,14 +6,14 @@
 #    By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/05/02 20:17:28 by akovalev          #+#    #+#              #
-#    Updated: 2024/05/09 15:26:33 by akovalev         ###   ########.fr        #
+#    Updated: 2024/05/09 18:03:15 by akovalev         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 NAME	:= philo
 
-CFLAGS	:= -pthread #-fsanitize=thread #-Wextra -Wall -Werror -Wunreachable-code -Ofast 
-LDFLAGS := -pthread #-fsanitize=thread
+CFLAGS	:= -pthread -Wextra -Wall -Werror -Wunreachable-code -Ofast 
+LDFLAGS := -pthread
 
 SRCS	:= main.c 
 OBJS	:= ${SRCS:.c=.o} 

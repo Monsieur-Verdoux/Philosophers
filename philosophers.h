@@ -6,7 +6,7 @@
 /*   By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 20:15:20 by akovalev          #+#    #+#             */
-/*   Updated: 2024/05/09 15:31:06 by akovalev         ###   ########.fr       */
+/*   Updated: 2024/05/09 15:53:37 by akovalev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,7 +38,7 @@ typedef struct s_info
 
 typedef struct s_philos
 {
-	int			id;
+	int				id;
 	pthread_t		thread;
 	int				status;
 	t_info			*info;

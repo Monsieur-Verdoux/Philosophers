@@ -6,7 +6,7 @@
 /*   By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 20:17:16 by akovalev          #+#    #+#             */
-/*   Updated: 2024/05/09 15:32:16 by akovalev         ###   ########.fr       */
+/*   Updated: 2024/05/09 18:06:03 by akovalev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,7 +32,6 @@ void	demutexize(t_info *info)
 	{
 		pthread_mutex_destroy(info->forks[i]);
 		free(info->forks[i]);
-		//printf("Deforkage %zu successful\n", i);
 		info->forks[i] = NULL;
 		i++;
 	}
@@ -47,15 +46,11 @@ void	dephilosize(t_philos **philos)
 	i = 0;
 	while (philos[i])
 	{
-		//pthread_mutex_destroy(philos[i]->alive_mutex);
 		pthread_mutex_destroy(philos[i]->eat_mutex);
-		//free(philos[i]->alive_mutex);
-		//philos[i]->alive_mutex = NULL;
 		free(philos[i]->eat_mutex);
 		philos[i]->eat_mutex = NULL;
 		free(philos[i]);
 		philos[i] = NULL;
-		//printf("Dephilo %zu successful\n", i);
 		i++;
 	}
 	free(philos);
@@ -82,7 +77,7 @@ void	ft_putstr_fd(char *s, int fd)
 	return ;
 }
 
-bool	malloc_fail(void *p)
+bool	check_malloc_fail(void *p)
 {
 	if (!p)
 	{
@@ -100,6 +95,7 @@ size_t	get_current_time(void)
 		ft_putstr_fd("gettimeofday() error\n", 2);
 	return (time.tv_sec * 1000 + time.tv_usec / 1000);
 }
+
 int	ft_newsleep(size_t milliseconds)
 {
 	size_t	start;
@@ -108,20 +104,6 @@ int	ft_newsleep(size_t milliseconds)
 	while (get_current_time() - start < milliseconds)
 		usleep(500);
 	return (0);
-}
-
-void	free_all(char **arr)
-{
-	int	i;
-
-	i = 0;
-	while (arr[i])
-	{
-		free(arr[i]);
-		arr[i] = NULL;
-		i++;
-	}
-	free(arr);
 }
 
 void	*ft_calloc(size_t count, size_t size)
@@ -145,7 +127,7 @@ void	*ft_calloc(size_t count, size_t size)
 	return (ptr);
 }
 
-static int	atoi_putnbr(const char *str, int sign, int i)
+static long	atoi_putnbr(const char *str, int sign, int i)
 {
 	long	result;
 
@@ -161,19 +143,14 @@ static int	atoi_putnbr(const char *str, int sign, int i)
 	{
 		if (result >= LONG_MAX / 10 && (result > LONG_MAX / 10 \
 		|| (str[i] - '0') > LONG_MAX % 10))
-		{
-			if (sign == 1)
-				return (-1);
-			else if (sign == -1)
-				return (0);
-		}
+			return (2147483648);
 		result = (result * 10) + (str[i] - '0');
 		i++;
 	}
-	return (sign * (int)result);
+	return (sign * result);
 }
 
-int	ft_atoi(const char *str)
+long	ft_atoi_long(const char *str)
 {
 	int		i;
 	int		sign;
@@ -194,18 +171,13 @@ int	ft_isdigit(int c)
 		return (0);
 }
 
-int	input_validation(char **argv)
+int	check_characters(char **argv)
 {
 	int	i;
 	int	j;
 
 	i = 1;
 	j = 0;
-	if (ft_atoi(argv[1]) == 0)
-	{
-		ft_putstr_fd("At least one thinker is required\n", 2);
-		return (1);
-	}
 	while (argv[i])
 	{
 		while (argv[i][j])
@@ -213,17 +185,46 @@ int	input_validation(char **argv)
 			if (!ft_isdigit(argv[i][j]))
 			{
 				ft_putstr_fd("Arguments must only contain digits 0-9\n", 2);
-				return (1);
+				return (0);
 			}
 			j++;
 		}
 		j = 0;
 		i++;
 	}
-	return (0);
+	return (1);
 }
 
-bool	register_death_or_full(t_philos *p)
+int	input_validation(char **argv, int argc)
+{
+	int	i;
+
+	i = 1;
+	if (argc != 5 && argc != 6)
+	{
+		ft_putstr_fd ("Please provide the correct number of arguments\n", 2);
+		return (0);
+	}
+	if (!check_characters(argv))
+		return (0);
+	while (argv[i])
+	{
+		if (ft_atoi_long(argv[i]) > 2147483647)
+		{
+			ft_putstr_fd("Only integers are allowed as arguments\n", 2);
+			return (0);
+		}
+		i++;
+	}
+	if (ft_atoi_long(argv[1]) == 0)
+	{
+		ft_putstr_fd("At least one thinker is required\n", 2);
+		return (0);
+	}
+	return (1);
+}
+
+bool	register_death(t_philos *p)
 {
 	pthread_mutex_lock(p->info->print_mutex);
 	if (!p->info->death_or_full)
@@ -235,17 +236,6 @@ bool	register_death_or_full(t_philos *p)
 	pthread_mutex_unlock(p->info->print_mutex);
 	return (0);
 }
-// bool	check_death_or_full(t_philos *p)
-// {
-// 	pthread_mutex_lock(p->info->print_mutex);
-// 	if (p->info->death_or_full)
-// 	{
-// 		pthread_mutex_unlock(p->info->print_mutex);
-// 		return (1);
-// 	}
-// 	pthread_mutex_unlock(p->info->print_mutex);
-// 	return (0);
-// }
 
 bool	potential_perishment(t_philos *p)
 {
@@ -262,104 +252,66 @@ bool	potential_perishment(t_philos *p)
 		p->since_last_meal = get_current_time() - p->last_meal;
 		if (p->since_last_meal > p->time_to_die)
 		{
-			//printf("slm is %zu and ttd is %zu\n", p->since_last_meal, p->info->time_to_die);
 			pthread_mutex_unlock(p->eat_mutex);
-			// pthread_mutex_lock(p->info->print_mutex);
-			// p->info->death_or_full = 1;
-			// pthread_mutex_unlock(p->info->print_mutex);
-			//pthread_mutex_lock(p->info->print);
-			///pthread_mutex_lock(p->info->print_mutex);
-			if (register_death_or_full(p)) // this was causing racing issues when just checking p->info>death_or_full
-			{
-				printf("[%zu] %d died 😵: I see you know your Judo well!\n", get_current_time() - p->init, p->id);
-				// pthread_mutex_lock(p->info->print_mutex);
-				// p->info->death_or_full = 1;
-				// pthread_mutex_unlock(p->info->print_mutex);
-			}
-			//pthread_mutex_unlock(p->info->print_mutex);
-			//pthread_mutex_unlock(p->info->print);
+			if (register_death(p))
+				printf("[%zu] %d died 😵: I see you know your Judo well!\n", \
+					get_current_time() - p->init, p->id);
 			return (1);
 		}
 		pthread_mutex_unlock(p->eat_mutex);
-	 }
+	}
 	return (0);
 }
 
-bool	equip_forks(t_philos *p)
+void	equip_forks(t_philos *p)
 {
-	//printf("current philo is %d and his right fork is %d\n", p->id, p->right);
 	pthread_mutex_lock(p->info->forks[p->right]);
-	// if (potential_perishment(p))
-	// {
-	// 	pthread_mutex_unlock(p->info->forks[p->right]);
-	// 	return (NULL);
-	// }
-	//pthread_mutex_lock(p->info->print);
 	pthread_mutex_lock(p->info->print_mutex);
-	if (!p->info->death_or_full)
-	// {
-	// 	pthread_mutex_unlock(p->info->forks[p->right]);
-	// 	pthread_mutex_unlock(p->info->print_mutex);
-	// 	pthread_mutex_unlock(p->info->print);
-	// 	return (NULL);
-	// }
-	// pthread_mutex_unlock(p->info->print_mutex);
-		printf("[%zu] %d has taken a fork %d 🥄:\n",
-			get_current_time() - p->init, p->id, p->right);
+	if (p->info->death_or_full)
+	{
+		pthread_mutex_unlock(p->info->forks[p->right]);
+		pthread_mutex_unlock(p->info->print_mutex);
+		return ;
+	}
+	printf("[%zu] %d has taken a fork %d 🥄:\n", \
+		get_current_time() - p->init, p->id, p->right);
 	pthread_mutex_unlock(p->info->print_mutex);
-	//pthread_mutex_unlock(p->info->print);
 	pthread_mutex_lock(p->info->forks[p->id]);
-	// if (potential_perishment(p))
-	// {
-	// 	pthread_mutex_unlock(p->info->forks[p->id]);
-	// 	pthread_mutex_unlock(p->info->forks[p->right]);
-	// 	return (NULL);
-	// }
-	//pthread_mutex_lock(p->info->print);
 	pthread_mutex_lock(p->info->print_mutex);
-	if (!p->info->death_or_full)
-	//  {
-	// 	pthread_mutex_unlock(p->info->forks[p->right]);
-	// 	pthread_mutex_unlock(p->info->forks[p->id]);
-	// 	pthread_mutex_unlock(p->info->print_mutex);
-	// 	pthread_mutex_unlock(p->info->print);
-	// 	return (NULL);
-	// }
-	// pthread_mutex_unlock(p->info->print_mutex);
-		printf("[%zu] %d has taken a fork %d 🥄:\n",
+	if (p->info->death_or_full)
+	{
+		pthread_mutex_unlock(p->info->forks[p->right]);
+		pthread_mutex_unlock(p->info->forks[p->id]);
+		pthread_mutex_unlock(p->info->print_mutex);
+		return ;
+	}
+	printf("[%zu] %d has taken a fork %d 🥄:\n", \
 			get_current_time() - p->init, p->id, p->id);
 	pthread_mutex_unlock(p->info->print_mutex);
-	//pthread_mutex_unlock(p->info->print);
-	return (p);
 }
 
 void	thinkage(t_philos *p)
 {
-	//pthread_mutex_lock(p->info->print);
 	pthread_mutex_lock(p->info->print_mutex);
 	if (!p->info->death_or_full)
-		printf("[%zu] %d is thinking 🤔: Gentlemen! This.. is.. Democracy.. Manifest..\n",
-			get_current_time() - p->init, p->id);
+	{
+		printf("[%zu] %d is thinking 🤔:", get_current_time() - p->init, p->id);
+		printf(" Gentlemen! This.. is.. Democracy.. Manifest..\n");
+	}
 	pthread_mutex_unlock(p->info->print_mutex);
-	//pthread_mutex_unlock(p->info->print);
 }
-
-
 
 void	feedage(t_philos *p)
 {
 	pthread_mutex_lock(p->eat_mutex);
 	p->last_meal = get_current_time();
-	//printf("Philo %d ate at %zu\n", p->id, p->last_meal);
 	p->meal_count++;
-	
-	//pthread_mutex_lock(p->info->print);
 	pthread_mutex_lock(p->info->print_mutex);
 	pthread_mutex_unlock(p->eat_mutex);
 	if (!p->info->death_or_full)
-		printf("[%zu] %d is eating 🍽️: A succulent Chinese meal!\n", get_current_time() - p->init, p->id);
+		printf("[%zu] %d is eating 🍽️: A succulent Chinese meal!\n", \
+			get_current_time() - p->init, p->id);
 	pthread_mutex_unlock(p->info->print_mutex);
-	//pthread_mutex_unlock(p->info->print);
 	while (get_current_time() - p->last_meal < p->time_to_eat)
 		usleep(500);
 	pthread_mutex_unlock(p->info->forks[p->right]);
@@ -371,14 +323,24 @@ void	sleepage(t_philos *p)
 	size_t	sleep_start;
 
 	sleep_start = get_current_time();
-	//pthread_mutex_lock(p->info->print);
 	pthread_mutex_lock(p->info->print_mutex);
 	if (!p->info->death_or_full)
-		printf("[%zu] %d is sleeping 😴: Ta ta and farewell!\n", get_current_time() - p->init, p->id);
+		printf("[%zu] %d is sleeping 😴: Ta ta and farewell!\n", \
+			get_current_time() - p->init, p->id);
 	pthread_mutex_unlock(p->info->print_mutex);
-	//pthread_mutex_unlock(p->info->print);
 	while (get_current_time() - sleep_start < p->time_to_sleep)
 		usleep (500);
+}
+
+void	lonely_death(t_philos *p)
+{
+	pthread_mutex_lock(p->info->forks[p->id]);
+	pthread_mutex_lock(p->info->print_mutex);
+	printf("[%zu] %d has taken a fork %d 🥄:\n",
+		get_current_time() - p->init, p->id, p->id);
+	pthread_mutex_unlock(p->info->print_mutex);
+	ft_newsleep(p->info->time_to_die);
+	pthread_mutex_unlock(p->info->forks[p->id]);
 }
 
 void	*philosophize(void *ptr)
@@ -388,9 +350,7 @@ void	*philosophize(void *ptr)
 	philo = (t_philos *)ptr;
 	pthread_mutex_lock(philo->info->start_mutex);
 	philo->init = philo->info->init;
-	//pthread_mutex_lock(philo->eat_mutex);
 	philo->last_meal = philo->init;
-	//pthread_mutex_unlock(philo->eat_mutex);
 	pthread_mutex_unlock(philo->info->start_mutex);
 	if (philo->id % 2 == 0)
 	{
@@ -398,50 +358,59 @@ void	*philosophize(void *ptr)
 		ft_newsleep(10);
 	}
 	if (philo->info->number_of_philosophers == 1)
+		lonely_death(philo);
+	while (!potential_perishment(philo))
 	{
-		//lonely_death_or_full(philo);
-		return (NULL);
-	}
-	while (!potential_perishment(philo))//(philo->alive) //why can't I use just philo->alive?
-	{
-		if (!equip_forks(philo))
-			return (NULL);
+		equip_forks(philo);
 		feedage(philo);
-		// if (potential_perishment(philo))
-		//  	return (NULL);
 		sleepage(philo);
-		// if (potential_perishment(philo))
-		//  	return (NULL);
 		thinkage(philo);
 	}
 	return (NULL);
 }
 
-void	initialize(char **argv, int argc, t_info *info)
+int	initialize(char **argv, int argc, t_info *info)
 {
-	info->number_of_philosophers = ft_atoi(argv[1]);
-	info->time_to_die = ft_atoi(argv[2]);
-	info->time_to_eat = ft_atoi(argv[3]);
-	info->time_to_sleep = ft_atoi(argv[4]);
+	info->number_of_philosophers = ft_atoi_long(argv[1]);
+	info->time_to_die = ft_atoi_long(argv[2]);
+	info->time_to_eat = ft_atoi_long(argv[3]);
+	info->time_to_sleep = ft_atoi_long(argv[4]);
 	if (argc == 6)
-		info->number_of_times_each_philosopher_must_eat = ft_atoi(argv[5]);
+		info->number_of_times_each_philosopher_must_eat = ft_atoi_long(argv[5]);
 	else
-		info->number_of_times_each_philosopher_must_eat = 0; //maybe need to handle 0 being passed as argument separately from not having it at all
+		info->number_of_times_each_philosopher_must_eat = 0;
 	info->print = ft_calloc(1, sizeof(pthread_mutex_t));
-	if (!malloc_fail(info->print))
-		return ;
+	if (!check_malloc_fail(info->print))
+		return (0);
 	pthread_mutex_init(info->print, NULL);
 	info->print_mutex = ft_calloc(1, sizeof(pthread_mutex_t));
-	if (!malloc_fail(info->print_mutex))
-		return ;
+	if (!check_malloc_fail(info->print_mutex))
+		return (0);
 	pthread_mutex_init(info->print_mutex, NULL);
 	info->start_mutex = ft_calloc(1, sizeof(pthread_mutex_t));
-	if (!malloc_fail(info->start_mutex))
-		return ;
+	if (!check_malloc_fail(info->start_mutex))
+		return (0);
 	pthread_mutex_init(info->start_mutex, NULL);
-	//info->init = get_current_time();
 	info->death_or_full = 0;
-	//printf("current time is %zu\n", info->init);
+	return (1);
+}
+
+void	birth_a_philo(t_info *info, t_philos **philos, size_t i)
+{
+	philos[i]->id = i;
+	philos[i]->time_to_die = info->time_to_die;
+	philos[i]->time_to_eat = info->time_to_eat;
+	philos[i]->time_to_sleep = info->time_to_sleep;
+	philos[i]->number_of_philosophers = info->number_of_philosophers;
+	philos[i]->number_of_times_each_philosopher_must_eat = \
+		info->number_of_times_each_philosopher_must_eat;
+	philos[i]->info = info;
+	philos[i]->meal_count = 0;
+	philos[i]->since_last_meal = 0;
+	if (i == info->number_of_philosophers - 1)
+		philos[i]->right = 0;
+	else
+		philos[i]->right = i + 1;
 }
 
 int	cradle_of_philosophy(t_info *info, t_philos **philos)
@@ -451,36 +420,16 @@ int	cradle_of_philosophy(t_info *info, t_philos **philos)
 	i = 0;
 	while (i < info->number_of_philosophers)
 	{
-		//printf("i is %zu and philo num is %zu\n", i, info->number_of_philosophers);
 		philos[i] = ft_calloc(1, sizeof(t_philos));
-		if (!malloc_fail(philos[i]))
+		if (!check_malloc_fail(philos[i]))
 			return (0);
-		philos[i]->id = i;
-		philos[i]->time_to_die = info->time_to_die;
-		philos[i]->time_to_eat = info->time_to_eat;
-		philos[i]->time_to_sleep = info->time_to_sleep;
-		philos[i]->number_of_philosophers = info->number_of_philosophers;
-		philos[i]->number_of_times_each_philosopher_must_eat = info->number_of_times_each_philosopher_must_eat;
-		philos[i]->info = info;
-		//philos[i]->init = info->init;
-		philos[i]->meal_count = 0;
-		//philos[i]->alive = 1;
-		//philos[i]->last_meal = philos[i]->init;
-		philos[i]->since_last_meal = 0;
-		//philos[i]->alive_mutex = ft_calloc(1, sizeof(pthread_mutex_t));
-		if (i == info->number_of_philosophers - 1)
-			philos[i]->right = 0;
-		else
-			philos[i]->right = i + 1;
-		// if (!malloc_fail(philos[i]->alive_mutex))
-		// 	return (0);
+		birth_a_philo(info, philos, i);
 		philos[i]->eat_mutex = ft_calloc(1, sizeof(pthread_mutex_t));
-		if (!malloc_fail(philos[i]->eat_mutex))
+		if (!check_malloc_fail(philos[i]->eat_mutex))
 			return (0);
-		//pthread_mutex_init(philos[i]->alive_mutex, NULL);
 		pthread_mutex_init(philos[i]->eat_mutex, NULL);
-		pthread_create(&philos[i]->thread, NULL, philosophize, (void *)philos[i]);
-		//printf("created thread %zu\n", i);
+		pthread_create(&philos[i]->thread, NULL, \
+			philosophize, (void *)philos[i]);
 		i++;
 	}
 	philos[i] = NULL;
@@ -491,52 +440,41 @@ int	forkage(t_info *info)
 {
 	size_t	i;
 
-	info->forks = ft_calloc(info->number_of_philosophers + 1, sizeof(pthread_mutex_t *));
-	if (!malloc_fail(info->forks))
+	info->forks = ft_calloc(info->number_of_philosophers + 1, \
+		sizeof(pthread_mutex_t *));
+	if (!check_malloc_fail(info->forks))
+	{
+		demutexize(info);
 		return (0);
+	}
 	i = 0;
 	while (i < info->number_of_philosophers)
 	{
-		//printf("i is %zu and philo num is %zu\n", i, info->number_of_philosophers);
 		info->forks[i] = ft_calloc(1, sizeof(pthread_mutex_t));
-		if (!malloc_fail(info->forks[i]))
+		if (!check_malloc_fail(info->forks[i]))
+		{
+			demutexize(info);
 			return (0);
+		}
 		pthread_mutex_init(info->forks[i], NULL);
-		//printf("Forkage %zu successful\n", i);
 		i++;
 	}
 	info->forks[i] = NULL;
 	return (1);
 }
-void	deforkage(t_info *info)
-{
-	size_t	i;
-
-	i = 0;
-	while (info->forks[i])
-	{
-		pthread_mutex_destroy(info->forks[i]);
-		free(info->forks[i]);
-		info->forks[i] = NULL;
-		printf("Deforkage %zu successful\n", i);
-		i++;
-	}
-	free(info->forks);
-	info->forks = NULL;
-}
-
 
 bool	successful_gluttony(t_philos **philos)
 {
 	int	i;
 
 	i = 0;
-	if (!philos[i]->number_of_times_each_philosopher_must_eat)
+	if (!philos[0]->number_of_times_each_philosopher_must_eat)
 		return (0);
 	while (philos[i])
 	{
 		pthread_mutex_lock(philos[i]->eat_mutex);
-		if (philos[i]->meal_count < philos[i]->number_of_times_each_philosopher_must_eat)
+		if (philos[i]->meal_count < \
+			philos[i]->number_of_times_each_philosopher_must_eat)
 		{
 			pthread_mutex_unlock(philos[i]->eat_mutex);
 			return (0);
@@ -572,36 +510,12 @@ void	overseer(t_philos **philos)
 		}
 		i = 0;
 	}
-	//forced_perishment(philos);
-	// pthread_mutex_lock(philos[0]->info->print_mutex);
-	// philos[0]->info->death_or_full = 1;
-	// pthread_mutex_unlock(philos[0]->info->print_mutex);
 }
 
-int	main(int argc, char **argv)
+void	cleanup(t_info *info, t_philos **philos)
 {
-	t_info		info;
-	t_philos	**philos;
-	int			i;
+	int	i;
 
-	if (argc != 5 && argc != 6)
-	{
-		ft_putstr_fd ("Please provide the correct number of arguments\n", 2);
-		return (EXIT_FAILURE);
-	}
-	if (input_validation(argv))
-		return (EXIT_FAILURE);
-	initialize(argv, argc, &info);
-	philos = ft_calloc(info.number_of_philosophers + 1, sizeof(t_philos *));
-	if (!malloc_fail(philos))
-		return (0);
-	forkage(&info);
-	pthread_mutex_lock(info.start_mutex);
-	if (!cradle_of_philosophy(&info, philos))
-		return (0);
-	info.init = get_current_time();
-	pthread_mutex_unlock(info.start_mutex);
-	overseer(philos);
 	i = 0;
 	while (philos[i])
 	{
@@ -609,7 +523,33 @@ int	main(int argc, char **argv)
 		i++;
 	}
 	dephilosize(philos);
-	demutexize(&info);
-	//deforkage(&info);
+	demutexize(info);
+}
+
+int	main(int argc, char **argv)
+{
+	t_info		info;
+	t_philos	**philos;
+
+	if (!input_validation(argv, argc) || \
+		!initialize(argv, argc, &info) || !forkage(&info))
+		return (EXIT_FAILURE);
+	philos = ft_calloc(info.number_of_philosophers + 1, sizeof(t_philos *));
+	if (!check_malloc_fail(philos))
+	{
+		demutexize(&info);
+		return (EXIT_FAILURE);
+	}
+	pthread_mutex_lock(info.start_mutex);
+	if (!cradle_of_philosophy(&info, philos))
+	{
+		demutexize(&info);
+		dephilosize(philos);
+		return (EXIT_FAILURE);
+	}
+	info.init = get_current_time();
+	pthread_mutex_unlock(info.start_mutex);
+	overseer(philos);
+	cleanup(&info, philos);
 	return (EXIT_SUCCESS);
 }
