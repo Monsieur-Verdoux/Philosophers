@@ -6,7 +6,7 @@
 /*   By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 20:17:16 by akovalev          #+#    #+#             */
-/*   Updated: 2024/05/08 18:05:24 by akovalev         ###   ########.fr       */
+/*   Updated: 2024/05/09 15:32:16 by akovalev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,9 +21,12 @@ void	demutexize(t_info *info)
 	pthread_mutex_destroy(info->print);
 	free(info->print);
 	info->print = NULL;
-	pthread_mutex_destroy(info->death_mutex);
-	free(info->death_mutex);
-	info->death_mutex = NULL;
+	pthread_mutex_destroy(info->print_mutex);
+	free(info->print_mutex);
+	info->print_mutex = NULL;
+	pthread_mutex_destroy(info->start_mutex);
+	free(info->start_mutex);
+	info->start_mutex = NULL;
 	i = 0;
 	while (info->forks[i])
 	{
@@ -220,60 +223,60 @@ int	input_validation(char **argv)
 	return (0);
 }
 
-bool	register_death(t_philos *p)
+bool	register_death_or_full(t_philos *p)
 {
-	pthread_mutex_lock(p->info->death_mutex);
-	if (!p->info->death)
+	pthread_mutex_lock(p->info->print_mutex);
+	if (!p->info->death_or_full)
 	{
-		p->info->death = 1;
-		pthread_mutex_unlock(p->info->death_mutex);
+		p->info->death_or_full = 1;
+		pthread_mutex_unlock(p->info->print_mutex);
 		return (1);
 	}
-	pthread_mutex_unlock(p->info->death_mutex);
+	pthread_mutex_unlock(p->info->print_mutex);
 	return (0);
 }
-// bool	check_death(t_philos *p)
+// bool	check_death_or_full(t_philos *p)
 // {
-// 	pthread_mutex_lock(p->info->death_mutex);
-// 	if (p->info->death)
+// 	pthread_mutex_lock(p->info->print_mutex);
+// 	if (p->info->death_or_full)
 // 	{
-// 		pthread_mutex_unlock(p->info->death_mutex);
+// 		pthread_mutex_unlock(p->info->print_mutex);
 // 		return (1);
 // 	}
-// 	pthread_mutex_unlock(p->info->death_mutex);
+// 	pthread_mutex_unlock(p->info->print_mutex);
 // 	return (0);
 // }
 
 bool	potential_perishment(t_philos *p)
 {
-	pthread_mutex_lock(p->info->death_mutex);
-	if (p->info->death)
+	pthread_mutex_lock(p->info->print_mutex);
+	if (p->info->death_or_full)
 	{
-		pthread_mutex_unlock(p->info->death_mutex);
+		pthread_mutex_unlock(p->info->print_mutex);
 		return (1);
 	}
 	else
 	{
-		pthread_mutex_unlock(p->info->death_mutex);
+		pthread_mutex_unlock(p->info->print_mutex);
 		pthread_mutex_lock(p->eat_mutex);
 		p->since_last_meal = get_current_time() - p->last_meal;
 		if (p->since_last_meal > p->time_to_die)
 		{
 			//printf("slm is %zu and ttd is %zu\n", p->since_last_meal, p->info->time_to_die);
 			pthread_mutex_unlock(p->eat_mutex);
-			// pthread_mutex_lock(p->info->death_mutex);
-			// p->info->death = 1;
-			// pthread_mutex_unlock(p->info->death_mutex);
+			// pthread_mutex_lock(p->info->print_mutex);
+			// p->info->death_or_full = 1;
+			// pthread_mutex_unlock(p->info->print_mutex);
 			//pthread_mutex_lock(p->info->print);
-			///pthread_mutex_lock(p->info->death_mutex);
-			if (register_death(p)) // this was causing racing issues when just checking p->info>death
+			///pthread_mutex_lock(p->info->print_mutex);
+			if (register_death_or_full(p)) // this was causing racing issues when just checking p->info>death_or_full
 			{
 				printf("[%zu] %d died 😵: I see you know your Judo well!\n", get_current_time() - p->init, p->id);
-				// pthread_mutex_lock(p->info->death_mutex);
-				// p->info->death = 1;
-				// pthread_mutex_unlock(p->info->death_mutex);
+				// pthread_mutex_lock(p->info->print_mutex);
+				// p->info->death_or_full = 1;
+				// pthread_mutex_unlock(p->info->print_mutex);
 			}
-			//pthread_mutex_unlock(p->info->death_mutex);
+			//pthread_mutex_unlock(p->info->print_mutex);
 			//pthread_mutex_unlock(p->info->print);
 			return (1);
 		}
@@ -292,18 +295,18 @@ bool	equip_forks(t_philos *p)
 	// 	return (NULL);
 	// }
 	//pthread_mutex_lock(p->info->print);
-	pthread_mutex_lock(p->info->death_mutex);
-	if (!p->info->death)
+	pthread_mutex_lock(p->info->print_mutex);
+	if (!p->info->death_or_full)
 	// {
 	// 	pthread_mutex_unlock(p->info->forks[p->right]);
-	// 	pthread_mutex_unlock(p->info->death_mutex);
+	// 	pthread_mutex_unlock(p->info->print_mutex);
 	// 	pthread_mutex_unlock(p->info->print);
 	// 	return (NULL);
 	// }
-	// pthread_mutex_unlock(p->info->death_mutex);
+	// pthread_mutex_unlock(p->info->print_mutex);
 		printf("[%zu] %d has taken a fork %d 🥄:\n",
 			get_current_time() - p->init, p->id, p->right);
-	pthread_mutex_unlock(p->info->death_mutex);
+	pthread_mutex_unlock(p->info->print_mutex);
 	//pthread_mutex_unlock(p->info->print);
 	pthread_mutex_lock(p->info->forks[p->id]);
 	// if (potential_perishment(p))
@@ -313,19 +316,19 @@ bool	equip_forks(t_philos *p)
 	// 	return (NULL);
 	// }
 	//pthread_mutex_lock(p->info->print);
-	pthread_mutex_lock(p->info->death_mutex);
-	if (!p->info->death)
+	pthread_mutex_lock(p->info->print_mutex);
+	if (!p->info->death_or_full)
 	//  {
 	// 	pthread_mutex_unlock(p->info->forks[p->right]);
 	// 	pthread_mutex_unlock(p->info->forks[p->id]);
-	// 	pthread_mutex_unlock(p->info->death_mutex);
+	// 	pthread_mutex_unlock(p->info->print_mutex);
 	// 	pthread_mutex_unlock(p->info->print);
 	// 	return (NULL);
 	// }
-	// pthread_mutex_unlock(p->info->death_mutex);
+	// pthread_mutex_unlock(p->info->print_mutex);
 		printf("[%zu] %d has taken a fork %d 🥄:\n",
 			get_current_time() - p->init, p->id, p->id);
-	pthread_mutex_unlock(p->info->death_mutex);
+	pthread_mutex_unlock(p->info->print_mutex);
 	//pthread_mutex_unlock(p->info->print);
 	return (p);
 }
@@ -333,11 +336,11 @@ bool	equip_forks(t_philos *p)
 void	thinkage(t_philos *p)
 {
 	//pthread_mutex_lock(p->info->print);
-	pthread_mutex_lock(p->info->death_mutex);
-	if (!p->info->death)
+	pthread_mutex_lock(p->info->print_mutex);
+	if (!p->info->death_or_full)
 		printf("[%zu] %d is thinking 🤔: Gentlemen! This.. is.. Democracy.. Manifest..\n",
 			get_current_time() - p->init, p->id);
-	pthread_mutex_unlock(p->info->death_mutex);
+	pthread_mutex_unlock(p->info->print_mutex);
 	//pthread_mutex_unlock(p->info->print);
 }
 
@@ -349,12 +352,13 @@ void	feedage(t_philos *p)
 	p->last_meal = get_current_time();
 	//printf("Philo %d ate at %zu\n", p->id, p->last_meal);
 	p->meal_count++;
-	pthread_mutex_unlock(p->eat_mutex);
+	
 	//pthread_mutex_lock(p->info->print);
-	pthread_mutex_lock(p->info->death_mutex);
-	if (!p->info->death)
+	pthread_mutex_lock(p->info->print_mutex);
+	pthread_mutex_unlock(p->eat_mutex);
+	if (!p->info->death_or_full)
 		printf("[%zu] %d is eating 🍽️: A succulent Chinese meal!\n", get_current_time() - p->init, p->id);
-	pthread_mutex_unlock(p->info->death_mutex);
+	pthread_mutex_unlock(p->info->print_mutex);
 	//pthread_mutex_unlock(p->info->print);
 	while (get_current_time() - p->last_meal < p->time_to_eat)
 		usleep(500);
@@ -368,10 +372,10 @@ void	sleepage(t_philos *p)
 
 	sleep_start = get_current_time();
 	//pthread_mutex_lock(p->info->print);
-	pthread_mutex_lock(p->info->death_mutex);
-	if (!p->info->death)
+	pthread_mutex_lock(p->info->print_mutex);
+	if (!p->info->death_or_full)
 		printf("[%zu] %d is sleeping 😴: Ta ta and farewell!\n", get_current_time() - p->init, p->id);
-	pthread_mutex_unlock(p->info->death_mutex);
+	pthread_mutex_unlock(p->info->print_mutex);
 	//pthread_mutex_unlock(p->info->print);
 	while (get_current_time() - sleep_start < p->time_to_sleep)
 		usleep (500);
@@ -384,9 +388,9 @@ void	*philosophize(void *ptr)
 	philo = (t_philos *)ptr;
 	pthread_mutex_lock(philo->info->start_mutex);
 	philo->init = philo->info->init;
-	pthread_mutex_lock(philo->eat_mutex);
+	//pthread_mutex_lock(philo->eat_mutex);
 	philo->last_meal = philo->init;
-	pthread_mutex_unlock(philo->eat_mutex);
+	//pthread_mutex_unlock(philo->eat_mutex);
 	pthread_mutex_unlock(philo->info->start_mutex);
 	if (philo->id % 2 == 0)
 	{
@@ -395,7 +399,7 @@ void	*philosophize(void *ptr)
 	}
 	if (philo->info->number_of_philosophers == 1)
 	{
-		//lonely_death(philo);
+		//lonely_death_or_full(philo);
 		return (NULL);
 	}
 	while (!potential_perishment(philo))//(philo->alive) //why can't I use just philo->alive?
@@ -427,16 +431,16 @@ void	initialize(char **argv, int argc, t_info *info)
 	if (!malloc_fail(info->print))
 		return ;
 	pthread_mutex_init(info->print, NULL);
-	info->death_mutex = ft_calloc(1, sizeof(pthread_mutex_t));
-	if (!malloc_fail(info->death_mutex))
+	info->print_mutex = ft_calloc(1, sizeof(pthread_mutex_t));
+	if (!malloc_fail(info->print_mutex))
 		return ;
-	pthread_mutex_init(info->death_mutex, NULL);
+	pthread_mutex_init(info->print_mutex, NULL);
 	info->start_mutex = ft_calloc(1, sizeof(pthread_mutex_t));
 	if (!malloc_fail(info->start_mutex))
 		return ;
 	pthread_mutex_init(info->start_mutex, NULL);
 	//info->init = get_current_time();
-	info->death = 0;
+	info->death_or_full = 0;
 	//printf("current time is %zu\n", info->init);
 }
 
@@ -479,6 +483,7 @@ int	cradle_of_philosophy(t_info *info, t_philos **philos)
 		//printf("created thread %zu\n", i);
 		i++;
 	}
+	philos[i] = NULL;
 	return (1);
 }
 
@@ -500,6 +505,7 @@ int	forkage(t_info *info)
 		//printf("Forkage %zu successful\n", i);
 		i++;
 	}
+	info->forks[i] = NULL;
 	return (1);
 }
 void	deforkage(t_info *info)
@@ -519,48 +525,29 @@ void	deforkage(t_info *info)
 	info->forks = NULL;
 }
 
-// void	forced_perishment(t_philos **philos)
-// {
-// 	int	i;
-
-// 	i = 0;
-// 	while (philos[i])
-// 	{
-// 		pthread_mutex_lock(philos[i]->alive_mutex);
-// 		philos[i]->alive = 0;
-// 		pthread_mutex_unlock(philos[i]->alive_mutex);
-// 		i++;
-// 	}
-// }
 
 bool	successful_gluttony(t_philos **philos)
 {
 	int	i;
 
 	i = 0;
-	pthread_mutex_lock(philos[i]->eat_mutex);
 	if (!philos[i]->number_of_times_each_philosopher_must_eat)
-	{
-		pthread_mutex_unlock(philos[i]->eat_mutex);
 		return (0);
-	}
-	pthread_mutex_unlock(philos[i]->eat_mutex);
 	while (philos[i])
 	{
 		pthread_mutex_lock(philos[i]->eat_mutex);
 		if (philos[i]->meal_count < philos[i]->number_of_times_each_philosopher_must_eat)
 		{
 			pthread_mutex_unlock(philos[i]->eat_mutex);
-			break ;
+			return (0);
 		}
 		pthread_mutex_unlock(philos[i]->eat_mutex);
-		pthread_mutex_lock(philos[i]->info->death_mutex);
-		philos[i]->info->death = 1;
-		pthread_mutex_unlock(philos[i]->info->death_mutex);
 		i++;
-		return (1);
 	}
-	return (0);
+	pthread_mutex_lock(philos[0]->info->print_mutex);
+	philos[0]->info->death_or_full = 1;
+	pthread_mutex_unlock(philos[0]->info->print_mutex);
+	return (1);
 }
 
 void	overseer(t_philos **philos)
@@ -586,9 +573,9 @@ void	overseer(t_philos **philos)
 		i = 0;
 	}
 	//forced_perishment(philos);
-	// pthread_mutex_lock(philos[0]->info->death_mutex);
-	// philos[0]->info->death = 1;
-	// pthread_mutex_unlock(philos[0]->info->death_mutex);
+	// pthread_mutex_lock(philos[0]->info->print_mutex);
+	// philos[0]->info->death_or_full = 1;
+	// pthread_mutex_unlock(philos[0]->info->print_mutex);
 }
 
 int	main(int argc, char **argv)
