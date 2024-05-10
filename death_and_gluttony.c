@@ -6,7 +6,7 @@
 /*   By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/10 14:16:47 by akovalev          #+#    #+#             */
-/*   Updated: 2024/05/10 14:20:08 by akovalev         ###   ########.fr       */
+/*   Updated: 2024/05/10 14:53:03 by akovalev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -96,7 +96,7 @@ void	overseer(t_philos **philos)
 	gluttony = 0;
 	perishment = 0;
 	i = 0;
-	ft_newsleep(10);
+	ft_newsleep(50);
 	while (!perishment && !gluttony)
 	{
 		while (philos[i])
