@@ -6,7 +6,7 @@
 /*   By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 20:15:20 by akovalev          #+#    #+#             */
-/*   Updated: 2024/05/09 15:53:37 by akovalev         ###   ########.fr       */
+/*   Updated: 2024/05/10 14:29:20 by akovalev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,8 @@
 # include <limits.h>
 # include <sys/time.h>
 # include <stdbool.h>
+# include <stdio.h>
+# include <string.h>
 
 typedef struct s_info
 {
@@ -40,11 +42,8 @@ typedef struct s_philos
 {
 	int				id;
 	pthread_t		thread;
-	int				status;
 	t_info			*info;
-	int				left;
 	int				right;
-	bool			alive;
 	size_t			meal_count;
 	size_t			last_meal;
 	size_t			since_last_meal;
@@ -56,5 +55,41 @@ typedef struct s_philos
 	size_t			time_to_eat;
 	size_t			time_to_sleep;
 }	t_philos;
+
+//cleanup.c
+void	demutexize(t_info *info);
+void	dephilosize(t_philos **philos);
+void	cleanup(t_info *info, t_philos **philos);
+
+//tools.c
+void	ft_putchar_fd(char c, int fd);
+void	ft_putstr_fd(char *s, int fd);
+void	*ft_calloc(size_t count, size_t size);
+bool	check_malloc_fail(void *p);
+int		ft_isdigit(int c);
+
+//tools1.c
+size_t	get_current_time(void);
+int		ft_newsleep(size_t milliseconds);
+long	ft_atoi_long(const char *str);
+
+//philosophize.c
+void	*philosophize(void *ptr);
+void	sleepage(t_philos *p);
+void	feedage(t_philos *p);
+void	thinkage(t_philos *p);
+void	equip_forks(t_philos *p);
+
+//death_and_gluttony.c
+void	lonely_death(t_philos *p);
+bool	register_death(t_philos *p);
+bool	potential_perishment(t_philos *p);
+bool	successful_gluttony(t_philos **philos);
+void	overseer(t_philos **philos);
+
+//spawning_pit.c
+void	birthe_a_philo(t_info *info, t_philos **philos, size_t i);
+int		cradle_of_philosophy(t_info *info, t_philos **philos);
+int		forge_forks(t_info *info);
 
 #endif 
