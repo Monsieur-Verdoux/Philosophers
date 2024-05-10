@@ -6,7 +6,7 @@
 /*   By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 20:15:20 by akovalev          #+#    #+#             */
-/*   Updated: 2024/05/10 14:29:20 by akovalev         ###   ########.fr       */
+/*   Updated: 2024/05/10 15:13:17 by akovalev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -62,7 +62,6 @@ void	dephilosize(t_philos **philos);
 void	cleanup(t_info *info, t_philos **philos);
 
 //tools.c
-void	ft_putchar_fd(char c, int fd);
 void	ft_putstr_fd(char *s, int fd);
 void	*ft_calloc(size_t count, size_t size);
 bool	check_malloc_fail(void *p);
@@ -75,20 +74,13 @@ long	ft_atoi_long(const char *str);
 
 //philosophize.c
 void	*philosophize(void *ptr);
-void	sleepage(t_philos *p);
-void	feedage(t_philos *p);
-void	thinkage(t_philos *p);
-void	equip_forks(t_philos *p);
 
 //death_and_gluttony.c
 void	lonely_death(t_philos *p);
-bool	register_death(t_philos *p);
 bool	potential_perishment(t_philos *p);
-bool	successful_gluttony(t_philos **philos);
 void	overseer(t_philos **philos);
 
 //spawning_pit.c
-void	birthe_a_philo(t_info *info, t_philos **philos, size_t i);
 int		cradle_of_philosophy(t_info *info, t_philos **philos);
 int		forge_forks(t_info *info);
 
