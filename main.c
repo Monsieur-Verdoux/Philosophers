@@ -6,7 +6,7 @@
 /*   By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 20:17:16 by akovalev          #+#    #+#             */
-/*   Updated: 2024/05/10 14:28:06 by akovalev         ###   ########.fr       */
+/*   Updated: 2024/05/10 14:44:51 by akovalev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,9 +50,9 @@ int	input_validation(char **argv, int argc)
 		return (0);
 	while (argv[i])
 	{
-		if (ft_atoi_long(argv[i]) > 2147483647)
+		if (ft_atoi_long(argv[i]) > 2147483647 || ft_atoi_long(argv[i]) == 0)
 		{
-			ft_putstr_fd("Only integers are allowed as arguments\n", 2);
+			ft_putstr_fd("Please use positive integers as arguments\n", 2);
 			return (0);
 		}
 		i++;
