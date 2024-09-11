@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   philosophize.c                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akovalev <akovalev@student.hive.fi>        +#+  +:+       +#+        */
+/*   By: akovalev <akovalev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/10 14:10:53 by akovalev          #+#    #+#             */
-/*   Updated: 2024/05/10 14:29:52 by akovalev         ###   ########.fr       */
+/*   Updated: 2024/09/11 20:45:37 by akovalev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,7 +63,11 @@ void	feedage(t_philos *p)
 			get_current_time() - p->init, p->id + 1);
 	pthread_mutex_unlock(p->info->print_mutex);
 	while (get_current_time() - p->last_meal < p->time_to_eat)
+	{
+		if (p->info->death_or_full)
+			break ;
 		usleep(500);
+	}
 	pthread_mutex_unlock(p->info->forks[p->right]);
 	pthread_mutex_unlock(p->info->forks[p->id]);
 }
@@ -79,7 +83,11 @@ void	sleepage(t_philos *p)
 			get_current_time() - p->init, p->id + 1);
 	pthread_mutex_unlock(p->info->print_mutex);
 	while (get_current_time() - sleep_start < p->time_to_sleep)
+	{
+		if (p->info->death_or_full)
+			break ;
 		usleep (500);
+	}
 }
 
 void	*philosophize(void *ptr)
